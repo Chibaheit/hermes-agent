@@ -168,6 +168,12 @@ An agent CLI driven over stdio is not an HTTP endpoint. Set `auth_type="external
 
 The client your `create_client` returns receives `command` and `args` in `client_kwargs`. If it is already complete and async-safe, declare `HERMES_SKIP_TRANSPORT_WRAP = True` / `HERMES_SKIP_ASYNC_WRAP = True` as class attributes so the auxiliary client does not re-dispatch it through an HTTP wire adapter.
 
+For a standalone SDK-backed example, see the experimental
+[Copilot SDK integration](../integrations/copilot-sdk.md). It uses this existing
+extension point without adding a bundled vendor plugin. On this baseline,
+third-party external-process profiles require explicit configuration or CLI flags:
+they are excluded from the interactive model picker.
+
 ## Hook reference examples
 
 Look at these bundled plugins for idioms:
