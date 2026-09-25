@@ -37,7 +37,7 @@ plugins:
     - copilot-sdk
 model:
   provider: copilot-sdk
-  default: YOUR_COPILOT_MODEL_ID
+  default: gpt-6-astra
   base_url: copilot-sdk://runtime
   api_mode: chat_completions
 copilot_sdk:
@@ -48,11 +48,58 @@ Preserve any already-enabled plugins. Put `COPILOT_GITHUB_TOKEN` in that profile
 `.env`, with Copilot entitlement/permissions, and restart Hermes. The plugin
 intentionally does not reuse the interactive Copilot login or another profile's
 credentials. Discover available model IDs using the plugin's `list_models()`;
-then run `hermes --provider copilot-sdk --model YOUR_COPILOT_MODEL_ID`.
+then run `hermes --provider copilot-sdk --model gpt-6-astra`.
+This fork's recommended configuration uses the GPT-6 family. If that model is
+unavailable to your account, select another authorized GPT-6-family model
+explicitly rather than silently falling back to an older family.
 
 This baseline's interactive model picker excludes external-process plugins;
 explicit configuration or CLI flags are required. Installing the plugin alone
 does not activate it.
+
+## Access locally on Windows
+
+The local setup uses a separate profile at
+`$HOME\.hermes\profiles\copilot-sdk`, leaving the default profile unchanged.
+Save the configuration above as that profile's `config.yaml`; its `.env` stays
+local and must never be copied into this repository.
+
+With Hermes and the pinned plugin installed in
+`$HOME\Repos\.venvs\hermes-copilot-sdk`, start an interactive terminal chat:
+
+```powershell
+$previousHome = $env:HERMES_HOME
+$env:HERMES_HOME = "$HOME\.hermes\profiles\copilot-sdk"
+try {
+    & "$HOME\Repos\.venvs\hermes-copilot-sdk\Scripts\hermes.exe" --cli
+} finally {
+    $env:HERMES_HOME = $previousHome
+}
+```
+
+Adjust the executable path if your Hermes environment is elsewhere. On the
+already-configured local machine, the same profile can be opened with its launcher:
+
+```powershell
+& "$HOME\.hermes\profiles\copilot-sdk\start.ps1"
+```
+
+The launcher is a local convenience, not a file installed by the plugin. This is
+a terminal application; no web server or public endpoint is started.
+
+## Local execution evidence
+
+Authenticated Hermes inference and a real `read_file` round trip succeeded on
+Windows with Python 3.12. Hermes emitted a tool request, executed the file read,
+and returned the synthetic file's contents after a second SDK completion.
+That initial live run used `gpt-5.4-mini` before the model preference changed;
+the local profile now selects `gpt-6-astra`. A GPT-6 live run has not yet been
+recorded, so the earlier result should not be treated as model-specific GPT-6
+validation.
+
+Credentials were saved through Hermes' credential helper in the isolated profile,
+with file access restricted to the local user and SYSTEM. No token or personal
+repository content is included in this fork.
 
 ## Execution and limitations
 
@@ -66,6 +113,8 @@ The adapter is **experimental and text-only**, not a native OpenAI endpoint.
 Streaming is buffered; structured response formats and usage accounting are not
 available. A stable serialized prefix does not guarantee remote prompt-cache
 reuse. Runtime I/O still occurs: empty mode is not an OS sandbox.
+Hermes' CLI may display zero token counts when usage is unavailable; these are
+not evidence that inference was free or consumed no tokens.
 
 The initial compatibility baseline is this fork's official-upstream commit
 `03fee43ca344ead7245a3b0ae20d38de0ae75642`. The fork was **not synchronized to newer
@@ -77,6 +126,12 @@ workflow files. No workflows were removed or rewritten to bypass that restrictio
 通过独立插件接入官方 Copilot SDK，不修改 Hermes 核心依赖或原有安全默认值。
 在当前配置档启用插件、设置模型并提供具备 Copilot 权限的令牌后使用；
 已有 `copilot` 与 `copilot-acp` 不受影响。
+
+推荐模型为 `gpt-6-astra`，需要换模型时仍选择账号可用的 GPT-6 系列。
+Windows 本机可运行 `& "$HOME\.hermes\profiles\copilot-sdk\start.ps1"`
+打开已配置的终端聊天；这不是网页服务。独立配置档和凭据保留在本机，
+不会上传到仓库。此前真实推理与文件工具调用已成功，但发生在切换 GPT-6
+之前，不能据此宣称 GPT-6 模型已完成真实运行验证。
 
 SDK 不直接执行工具，工具请求仍由 Hermes 校验、执行和审批。当前为实验性
 纯文本兼容层，暂不支持图片、原生结构化输出、实时 token 流或用量统计。
