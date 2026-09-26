@@ -131,6 +131,8 @@ def set_session_vars(
     declared"), which ``session_history_delivery_supported()`` treats as NOT capable — an omitted declaration
     cannot grant wake authority."""
     global _session_context_engaged
+    from tools.workflow_policy import set_workflow_owner
+    set_workflow_owner("")
     _session_context_engaged = True
     values = (
         platform, source, chat_id, chat_type, chat_name, thread_id, user_id, user_id_alt,
@@ -150,6 +152,8 @@ def clear_session_vars(tokens: list) -> None:
     goes back to ``_UNSET``: a cleared context is default-supported, not opted-out.  Wake
     capability goes back to ``_UNSET`` too — but for the opposite reason: a cleared context has
     declared nothing, and an undeclared capability FAILS CLOSED (#98619)."""
+    from tools.workflow_policy import set_workflow_owner
+    set_workflow_owner("")
     for var in _SESSION_VARS:
         var.set("")
     _SESSION_ASYNC_DELIVERY.set(_UNSET)
@@ -163,6 +167,8 @@ def reset_session_vars() -> None:
     task inherits A's already-set vars and a subprocess spawned before B binds would read A's
     identity.  ``_SESSION_ASYNC_DELIVERY`` and ``_SESSION_HISTORY_DELIVERY`` (outside ``_VAR_MAP``)
     are reset explicitly too."""
+    from tools.workflow_policy import set_workflow_owner
+    set_workflow_owner("")
     for var in _VAR_MAP.values():
         var.set(_UNSET)
     _SESSION_ASYNC_DELIVERY.set(_UNSET)

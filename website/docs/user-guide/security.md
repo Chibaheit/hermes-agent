@@ -62,6 +62,32 @@ The full set of keys:
 Setting `approvals.mode: off` disables all safety prompts. Use only in trusted environments (CI/CD, containers, etc.).
 :::
 
+### Creator-bound automatic approval
+
+For Telegram workflows, operators can preauthorize specific authenticated creators
+without enabling global YOLO:
+
+```yaml
+approvals:
+  auto_approve_owners: ["telegram:123456789"]
+```
+
+Use the numeric Telegram **user** ID, not a username or group/chat ID. The default
+is an empty list. The gateway binds the sender per turn; a different sender in the
+same conversation does not inherit the grant. Background delegation and terminal
+completions carry their captured creator, independently of their delivery target.
+Cron jobs capture creator provenance on creation and restore it at execution;
+changing delivery metadata cannot grant ownership. Legacy jobs without provenance
+remain restricted. Editing a job's execution inputs as another or unknown actor
+revokes its creator grant; editing a legacy job does not grant one.
+
+The setting is profile-local and checked on each approval. It bypasses recoverable
+tool/command approval prompts, not hardline blocks, explicit deny rules, OS
+privileges, credentials, or unrelated slash-command confirmations. Removing an ID
+revokes future approval decisions; it does not stop an already running process.
+Only authenticated Telegram ingress and owner-stamped internal continuations are
+eligible; ambient environment variables and prompt text never establish ownership.
+
 ### YOLO Mode
 
 YOLO mode bypasses **all** dangerous command approval prompts for the current session. It can be activated three ways:

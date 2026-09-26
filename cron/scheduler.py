@@ -2115,8 +2115,11 @@ class _CronRunScope:
         self._cron_session_var = _VAR_MAP["HERMES_CRON_SESSION"]
         self._cron_session_token = None
         self._non_dispatcher_token = None
+        self._workflow_owner = job.get("workflow_owner")
 
     def enter(self) -> None:
+        from tools.workflow_policy import set_workflow_owner
+        set_workflow_owner(self._workflow_owner)
         # Scope cron approval policy; exit() RESETS via token (pinning "" would suppress the legacy
         # os.environ fallback used by standalone entrypoints/tests).
         self._cron_session_token = self._cron_session_var.set("1")

@@ -1590,6 +1590,7 @@ DEFAULT_CONFIG = {
         # notification the user may not see immediately — 60s proved too tight on Telegram/Discord (the
         # prompt expired before the user reached their phone), so the default is 300.
         "mode": "smart",
+        "auto_approve_owners": [],
         "timeout": 300,
         "cron_mode": "deny",
         "single_query_mode": "deny",

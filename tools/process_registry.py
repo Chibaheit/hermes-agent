@@ -511,6 +511,7 @@ class ProcessSession:
     watcher_chat_id: str = ""
     watcher_user_id: str = ""
     watcher_user_name: str = ""
+    watcher_workflow_owner: str = ""
     watcher_thread_id: str = ""
     watcher_message_id: str = ""                # Triggering message id — reply anchor for topic routing
     watcher_interval: int = 0                   # 0 = no watcher configured
@@ -550,7 +551,7 @@ class ProcessSession:
 
 
 # Watcher routing fields, in event-dict key order (``watcher_<key>`` on the session).
-_WATCHER_ROUTE_KEYS = ("platform", "chat_id", "user_id", "user_name", "thread_id", "message_id")
+_WATCHER_ROUTE_KEYS = ("platform", "chat_id", "user_id", "user_name", "thread_id", "message_id", "workflow_owner")
 # Session fields persisted verbatim in the crash-recovery checkpoint (plus
 # ``session_id``; ``command`` is redacted and ``owner_task_id`` defaulted on write).
 _CHECKPOINT_FIELDS = (

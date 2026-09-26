@@ -37,6 +37,7 @@ from tools.approval_floors import (
 from tools.approval_gateway_wait import _await_gateway_decision
 from tools.approval_prompt import _present_with_selected_transport, _transport_choice, prompt_dangerous_approval
 from tools.approval_smart import _smart_verdict
+from tools.workflow_policy import workflow_auto_approved
 
 logger = logging.getLogger(__name__)
 
@@ -320,9 +321,8 @@ def is_current_session_yolo_enabled() -> bool:
 
 
 def _yolo_active() -> bool:
-    """CLI ``--yolo`` (process-scoped, frozen at import) or gateway ``/yolo``
-    (session-scoped). Hardline / deny-rule floors run BEFORE this everywhere."""
-    return _YOLO_MODE_FROZEN or is_current_session_yolo_enabled()
+    """Process/session YOLO or creator approval; hardline/deny floors run BEFORE this."""
+    return _YOLO_MODE_FROZEN or is_current_session_yolo_enabled() or workflow_auto_approved()
 
 
 def _permanent_set() -> set:
@@ -482,10 +482,13 @@ def save_permanent_allowlist(patterns: set):
 # --- Bypass check (yolo / mode=off) ---------------------------------------------------------------------------------
 
 def is_approval_bypass_active_for_session(session_key: str) -> bool:
-    """Canonical three-source bypass check: process ``--yolo`` (frozen at import), the
-    session-scoped gateway ``/yolo`` toggle, ``approvals.mode: off``. Pure bypass
+    """Process/session YOLO, creator-bound approval, or ``approvals.mode: off``. Pure bypass
     sub-expression only — hardline blocklist / permanent allowlist are the caller's job."""
-    return (_YOLO_MODE_FROZEN or is_session_yolo_enabled(session_key) or approval_context._get_approval_mode() == "off")
+    return (
+        _YOLO_MODE_FROZEN or is_session_yolo_enabled(session_key)
+        or approval_context._get_approval_mode() == "off"
+        or (session_key == get_current_session_key(default="") and workflow_auto_approved())
+    )
 
 
 def is_approval_bypass_active() -> bool:

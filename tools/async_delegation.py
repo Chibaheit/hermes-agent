@@ -69,7 +69,7 @@ _LIVE_STATES = {"running", "stalling", "finalizing"}
 _ACTIVE_STATES = ("running", "stalling")
 # Routing origin persisted at dispatch so a restart-recovered completion can
 # reconstruct a full SessionSource (scope_id drives relay tenant egress).
-_ROUTING_KEYS = ("scope_id", "user_id", "user_name")
+_ROUTING_KEYS = ("scope_id", "user_id", "user_name", "workflow_owner")
 # Structured stall metadata — additive, present only on stall finalizations.
 _STALL_META_KEYS = ("stalled_after_quiet_seconds", "stall_threshold_seconds", "stall_phase", "stall_grace_seconds")
 # Private stall bookkeeping on the record -> public field in list_async_delegations().
@@ -127,8 +127,14 @@ def _capture_routing_origin() -> Dict[str, Any]:
     Best-effort: empty values are omitted."""
     try:
         from gateway.session_context import get_session_env
-        return {k: v for k in _ROUTING_KEYS if (v := get_session_env(f"HERMES_SESSION_{k.upper()}", ""))}
-    except Exception:  # noqa: BLE001 - routing origin is additive, never fatal
+        from tools.workflow_policy import current_workflow_owner
+        return {
+            **{k: v for k in _ROUTING_KEYS if k != "workflow_owner"
+               and (v := get_session_env(f"HERMES_SESSION_{k.upper()}", ""))},
+            "workflow_owner": current_workflow_owner(),
+        }
+    except Exception as exc:  # noqa: BLE001 - unknown provenance must remain unprivileged
+        logger.warning("Could not capture delegation routing/creator; automatic creator approval unavailable: %s", exc)
         return {}
 
 

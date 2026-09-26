@@ -82,6 +82,8 @@ def _stamp_gateway_routing(proc_session, get_session_env) -> None:
     if not platform:
         return
     proc_session.watcher_platform = platform
+    from tools.workflow_policy import current_workflow_owner
+    proc_session.watcher_workflow_owner = current_workflow_owner()
     for attr, var in _ROUTING_FIELDS:
         setattr(proc_session, attr, get_session_env(var, ""))
 
@@ -130,6 +132,7 @@ def _register_completion_watcher(process_registry, proc_session, session_key) ->
         **{attr.removeprefix("watcher_"): getattr(proc_session, attr)
            for attr, _ in _ROUTING_FIELDS[:-1]},
         "notify_on_complete": True, "parent_session_id": proc_session.parent_session_id,
+        "workflow_owner": getattr(proc_session, "watcher_workflow_owner", ""),
     }
     runner_ref = getattr(sys.modules.get("gateway.run"), "_gateway_runner_ref", None)
     runner = runner_ref() if callable(runner_ref) else None

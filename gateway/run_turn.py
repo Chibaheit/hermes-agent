@@ -1981,6 +1981,8 @@ class GatewayTurnMixin:
         context = build_session_context(source, self.config, session_entry)
         # Session context variables for tools (task-local, concurrency-safe)
         _session_env_tokens = self._set_session_env(context)
+        from tools.workflow_policy import bind_workflow_event
+        _workflow_note = bind_workflow_event(event)
         # Self-injected turns (MessageEvent(internal=True)) persist with a DB-only display_kind so
         # UIs render timeline notices, not user bubbles; role/content untouched.
         persist_user_display_kind = display_kind_for_event(event)
@@ -1994,7 +1996,7 @@ class GatewayTurnMixin:
 
         # Per-turn notes ride the user message via the api_content sidecar, NOT context_prompt
         # (appending to the ephemeral system prompt forced a full agent rebuild).
-        turn_sidecar_notes: List[str] = []
+        turn_sidecar_notes: List[str] = [_workflow_note] if _workflow_note else []
         if _was_auto_reset:
             await self._hmwa_deliver_auto_reset_notice(session_entry, source, turn_sidecar_notes)
 

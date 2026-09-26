@@ -404,7 +404,7 @@ def fire_claim_fence(job_id: str, *, expected_owner: str):
 
 # Fields that must never change after creation: ``id`` is a path component under OUTPUT_DIR, so an
 # update could leak ``../escape``/absolute/nested values into output writes/deletes.
-_IMMUTABLE_JOB_FIELDS = frozenset({"id"})
+_IMMUTABLE_JOB_FIELDS = frozenset({"id", "workflow_owner"})
 
 
 def _job_output_dir(job_id: str) -> Path:
@@ -1870,6 +1870,8 @@ def create_job(
         if value is not None:
             job[key] = value
 
+    from tools.workflow_policy import stamp_cron_owner
+    stamp_cron_owner(job)
     with _jobs_lock():
         save_jobs(load_jobs() + [job])
     return job
@@ -2036,6 +2038,8 @@ def update_job(job_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]
         _normalize_job_updates(job, updates)
         previous_inference_axes = _normalized_inference_axes(job)
         updated = _apply_skill_fields({**job, **updates})
+        from tools.workflow_policy import revoke_changed_cron_owner
+        revoke_changed_cron_owner(job, updated, updates)
         _reject_terminal_activation(job, updated, job_id)
         # Re-check on the MERGED record; scoped to changed fields so legacy records keep loading.
         if {"monitor_script", "monitor_url", "no_agent", "script"}.intersection(updates):
