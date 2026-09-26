@@ -105,8 +105,9 @@ For more context, see the upstream Astral reports: [astral-sh/uv#13553](https://
 ## Getting Started
 
 For this fork's headless deployment, see the
-[Copilot SDK + Telegram + Google Workspace setup guide](website/docs/integrations/copilot-sdk-telegram-gog.md).
-It keeps credentials local and uses existing plugins and skills rather than core patches.
+[Copilot CLI workers + Telegram + Google Workspace setup guide](website/docs/integrations/copilot-sdk-telegram-gog.md).
+[Hermes coordinates direct Copilot CLI workers](website/docs/integrations/copilot-cli.md)
+without an SDK layer. Credentials stay local; integration uses existing plugins and skills rather than core patches.
 
 ```bash
 hermes              # Interactive CLI — start a conversation

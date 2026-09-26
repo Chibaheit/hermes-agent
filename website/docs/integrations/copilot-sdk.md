@@ -5,6 +5,11 @@ description: Use the official GitHub Copilot SDK through an opt-in external mode
 
 # Copilot SDK
 
+> **Superseded for the current deployment:** use
+> [Hermes coordinator with Copilot CLI workers](./copilot-cli.md).
+> The SDK bridge below is retained as historical documentation, not the
+> recommended architecture. Hermes now coordinates direct CLI workers.
+
 This fork can use the official GitHub Copilot SDK through the standalone
 [`Chibaheit/hermes-copilot-sdk`](https://github.com/Chibaheit/hermes-copilot-sdk)
 plugin. It uses Hermes' existing pip model-provider extension point; **no vendor

@@ -24,6 +24,13 @@ Hermes supports multiple AI inference providers out of the box. Use `hermes mode
 
 - **[MCP Servers](../user-guide/features/mcp.md)** — Connect Hermes to external tool servers via Model Context Protocol. Access tools from GitHub, databases, file systems, browser stacks, internal APIs, and more without writing native Hermes tools. Supports both stdio and SSE transports, per-server tool filtering, and capability-aware resource/prompt registration.
 
+## Local Copilot CLI Workers
+
+In this fork, [Hermes coordinates Copilot CLI workers](./copilot-cli.md) through a
+standalone plugin. Hermes keeps planning, scheduling and replies; separate CLI
+processes investigate local repositories and return results or questions. No
+Copilot SDK layer is used.
+
 ## Web Search Backends
 
 The `web_search` and `web_extract` tools support eight backend providers, configured via `config.yaml` or `hermes tools`:

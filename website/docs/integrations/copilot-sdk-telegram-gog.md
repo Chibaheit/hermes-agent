@@ -1,11 +1,13 @@
 ---
-title: Linux setup with Copilot SDK, Telegram, and gog
+title: Linux setup with Copilot CLI workers, Telegram, and gog
 description: Reproduce a headless Hermes deployment with a paired Telegram bot and Google Workspace access.
 ---
 
-# Linux setup with Copilot SDK, Telegram, and gog
+# Linux setup with Copilot CLI workers, Telegram, and gog
 
-This is the setup validated on Fri, 2026-09-25. It uses the fork's existing
+The initial deployment was validated on Fri, 2026-09-25; the SDK-free architecture
+was introduced on Sat, 2026-09-26. This page retains its historical URL.
+It uses the fork's existing
 plugin, platform, and skill extension points; no Hermes core changes are needed.
 The primary user interface is Telegram, not an interactive Hermes terminal.
 
@@ -13,14 +15,17 @@ The primary user interface is Telegram, not an interactive Hermes terminal.
 
 ```text
 Approved Telegram user
-  -> Telegram bot -> Hermes gateway -> Copilot SDK plugin -> GPT-6 Astra
+  -> Telegram bot -> Hermes gateway -> native Copilot Responses API -> GPT-6 Astra
   <- Telegram reply <- Hermes tool loop <- model response
                             |
+                            +-> copilot_cli -> separate local Copilot CLI worker
+                            |               <- result or clarification question
                             +-> gog skill -> terminal -> gog -> Google APIs
 ```
 
-Hermes owns tool execution and approvals. The SDK's native tools are disabled.
-See [Copilot SDK](./copilot-sdk.md) for the text-only adapter's limitations.
+Hermes owns coordination, scheduling, approvals and replies. CLI workers handle
+bounded local jobs; no Copilot SDK layer is used.
+See [Copilot CLI workers](./copilot-cli.md) for the architecture and permission boundaries.
 Google OAuth consent is separate from Copilot authentication and Telegram pairing.
 Only authorize the Google services you intend the agent to use. Retrieved Google
 content can enter the Hermes/model conversation; authorization is not a promise
@@ -29,7 +34,7 @@ that content stays local.
 | Location | Purpose | Commit to Git? |
 | --- | --- | --- |
 | `~/Repos/hermes-agent` | Fork source and isolated `venv` | Source/docs only |
-| `~/Repos/hermes-copilot-sdk` | External provider plugin source | Source only |
+| `~/Repos/hermes-copilot-cli` | Direct CLI worker plugin source | Source only |
 | `~/.local/bin/hermes` | Launcher pointing at the fork's venv | No |
 | `~/.hermes/config.yaml` | Provider and behavior settings | Sanitized examples only |
 | `~/.hermes/.env` | Copilot/Telegram tokens and gog keyring password | Never |
@@ -53,20 +58,19 @@ For fresh checkouts:
 ```bash
 mkdir -p ~/Repos ~/.local/bin
 git clone --depth 1 https://github.com/Chibaheit/hermes-agent.git ~/Repos/hermes-agent
-git clone --depth 1 https://github.com/Chibaheit/hermes-copilot-sdk.git ~/Repos/hermes-copilot-sdk
+git clone --depth 1 https://github.com/Chibaheit/hermes-copilot-cli.git ~/Repos/hermes-copilot-cli
 cd ~/Repos/hermes-agent
 UV_PROJECT_ENVIRONMENT=venv uv sync --locked --extra all --python 3.11
 uv pip install --python venv/bin/python \
-  "git+https://github.com/Chibaheit/hermes-copilot-sdk.git@ed22b3c9822236fb3109ccc3c5d321342c62d44a" \
+  -e ~/Repos/hermes-copilot-cli \
   "python-telegram-bot[webhooks]==22.8"
-venv/bin/python -m copilot download-runtime
+copilot --version
 ```
 
-The verified baseline was Hermes `82bcaa40de4e6bf99b8d148e23cedc5ce4155dae`
-(0.21.3), Python 3.11.16, plugin 0.1.0, SDK 1.0.14, and SDK runtime 1.0.85.
-The initial setup installed the plugin editable from the checkout at the pinned
-commit; the command above pins the same source without relying on a moving branch.
-Do not substitute the interactive Copilot CLI for the SDK's matching runtime.
+Install the standalone Copilot CLI before this step using GitHub's official
+installer. The direct worker protocol was verified with CLI 1.0.88 and
+Python 3.11.16. Record and pin the plugin revision for reproducible deployments;
+the editable installation above follows the local checkout. No SDK runtime is needed.
 
 Before replacing an existing `hermes` launcher, preserve it under an unused backup
 name (the validated host used `hermes-pre-fork`). Then:
@@ -79,26 +83,36 @@ uv pip check --python ~/Repos/hermes-agent/venv/bin/python
 
 Confirm the install directory points to `~/Repos/hermes-agent`. Keep an existing
 `~/.hermes` intact; do not overwrite it with templates. A later exact `uv sync`
-can remove externally installed packages, so reinstall the pinned plugin and
+can remove externally installed packages, so reinstall the worker plugin and
 Telegram dependency afterward and recheck imports before restarting the gateway.
 
-## 2. Configure Copilot SDK and verify inference
+## 2. Configure Hermes and direct CLI workers
 
-Merge the config from [Copilot SDK setup](./copilot-sdk.md#setup), retaining all
+Merge the config from [Copilot CLI setup](./copilot-cli.md#install-and-configure), retaining all
 existing enabled plugins. The required values are:
 
 ```yaml
 plugins:
   enabled:
-    - copilot-sdk
+    - copilot-cli
+  entries:
+    copilot-cli:
+      settings:
+        executable: /home/YOUR_USER/.local/bin/copilot
+        workspace: /home/YOUR_USER/Repos
+        model: gpt-6-astra
+        permissions: read-only
 model:
-  provider: copilot-sdk
+  provider: copilot
   default: gpt-6-astra
-  base_url: copilot-sdk://runtime
-  api_mode: chat_completions
-copilot_sdk:
-  timeout_seconds: 120
+  base_url: https://api.githubcopilot.com
+  api_mode: codex_responses
+platform_toolsets:
+  cli: [hermes-cli, copilot-cli]
+  telegram: [hermes-telegram, copilot-cli]
 ```
+
+Append the worker toolset rather than overwriting other configured channel tools.
 
 Use the following in a **trusted local terminal** to enter the Copilot credential
 without placing it in shell history or command arguments:
@@ -115,7 +129,7 @@ PY
 ```
 
 An existing authenticated GitHub CLI credential worked on the validated host,
-but not every GitHub token has Copilot access. The plugin does not automatically
+but not every GitHub token has Copilot access. The worker plugin does not automatically
 reuse `gh` or interactive Copilot login. Verify authorized model discovery and
 actual inference; executable availability alone does not establish authentication.
 Do not silently fall back from GPT-6 to another model family.
@@ -126,6 +140,12 @@ hermes chat --cli --oneshot --ignore-rules -Q --max-turns 2 \
 ```
 
 Expected response: `HERMES_READY`. This is a setup probe, not the normal UI.
+
+If migrating the earlier deployment, disable/remove `copilot-sdk` and its
+`copilot_sdk` settings, uninstall `hermes-copilot-sdk` and `github-copilot-sdk`
+from this Hermes environment, and add the standing coordinator instructions from
+the new plugin README to the profile's `SOUL.md`. Keep unrelated SDK environments
+and existing Telegram/Google credentials intact.
 
 ## 3. Connect Telegram and restrict access
 
@@ -268,7 +288,9 @@ changing an existing conversation's cached prompt.
 | Probe | Expected result | Setup evidence |
 | --- | --- | --- |
 | Hermes version and `uv pip check` | Fork path; compatible environment | Passed |
-| SDK model discovery and one-shot chat | GPT-6 Astra available; `HERMES_READY` | Passed |
+| Native Copilot Responses API | GPT-6 Astra responds without SDK | Passed on Sat, 2026-09-26 |
+| Hermes -> Copilot CLI -> local file | Worker reports local file evidence | Passed on Sat, 2026-09-26 |
+| CLI clarification and resume | Question returned; answer resumes same session | Passed on Sat, 2026-09-26 |
 | Telegram state, pairing, systemd enablement | Connected; intended user approved; enabled | Passed |
 | Hermes skill listing and `skill_view(name="gog")` | Enabled skill loads | Passed |
 | gog auth list and doctor | Valid token; encrypted keyring readable; refresh succeeds | Passed |
@@ -277,6 +299,7 @@ changing an existing conversation's cached prompt.
 | `gog --readonly --json --no-input --account you@example.com drive ls --max 1` | Read succeeds | Passed after Drive API enablement |
 | Contacts, Docs, Sheets, Tasks | Corresponding APIs work when enabled | OAuth scopes granted; API calls not tested |
 | Telegram-triggered Google tool round trip | Bot reads requested data and replies | Not recorded during setup |
+| Telegram-triggered Copilot CLI job | Worker result returns through the bot | Not yet observed live |
 
 Run gog probes through the same `uv run --no-project --env-file ~/.hermes/.env --`
 prefix. Do not publish returned mail, events, file names, or logs containing them.
